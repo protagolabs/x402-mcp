@@ -2,18 +2,6 @@
 """
 MCP Server using fastmcp framework
 """
-
-from fastmcp import FastMCP
-from x402.facilitator import FacilitatorClient
-from cdp.x402 import create_facilitator_config
-from x402.types import ListDiscoveryResourcesRequest, ListDiscoveryResourcesResponse
-from x402.clients.httpx import x402HttpxClient
-from x402.clients.base import decode_x_payment_response, x402Client
-from eth_account import Account
-from httpx._config import Timeout
-import logging
-import os
-
 from x402.types import PaymentRequirements
 
 _original_function = PaymentRequirements.validate_max_amount_required
@@ -28,6 +16,17 @@ def _patched_function(cls, v):
     return v
 
 PaymentRequirements.validate_max_amount_required = _patched_function
+
+from fastmcp import FastMCP
+from x402.facilitator import FacilitatorClient
+from cdp.x402 import create_facilitator_config
+from x402.types import ListDiscoveryResourcesRequest, ListDiscoveryResourcesResponse
+from x402.clients.httpx import x402HttpxClient
+from x402.clients.base import decode_x_payment_response, x402Client
+from eth_account import Account
+from httpx._config import Timeout
+import logging
+import os
 
 
 logger = logging.getLogger(__name__)
