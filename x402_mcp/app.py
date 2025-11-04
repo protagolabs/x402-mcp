@@ -26,7 +26,6 @@ httpx_default_timeout = os.getenv("HTTPX_DEFAULT_TIMEOUT", "30")
     description="List discoverable x402 resources from the Bazaar.",
 )
 async def discovery_resource(
-    type: str = None,
     limit: int = 100,
     offset: int = 0,
     asset: str = None,
@@ -35,7 +34,6 @@ async def discovery_resource(
     """List discoverable x402 resources from the Bazaar.
 
     Args:
-        type (str, optional): Filter by resource type (e.g., “http”). Defaults to None.
         limit (int, optional): Maximum number of results to return (1-100). Defaults to 100.
         offset (int, optional): Number of results to skip for pagination. Defaults to 0.
         asset (str, optional): Filter by ERC-20 token contract address for payment. Defaults to USDC token address on basechain.
@@ -169,7 +167,7 @@ def main():
     """Main function to run the MCP server"""
     logger.info("Starting MCP Server...")
     # Run with stdio transport (default)
-    app.run(transport="stdio")
+    app.run(transport="sse")
 
 if __name__ == "__main__":
     main()
