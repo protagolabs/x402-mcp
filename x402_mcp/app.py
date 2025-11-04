@@ -44,7 +44,6 @@ async def discovery_resource(
     Returns:
         _type_: dict
     """
-    logger.info("111")
     facilitator_config = create_facilitator_config()
     facilitator = FacilitatorClient(facilitator_config)
 
