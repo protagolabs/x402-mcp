@@ -47,7 +47,7 @@ async def discovery_resource(
 
     # Fetch all available services
     services = await facilitator.list(
-        ListDiscoveryResourcesRequest(type=type, limit=limit, offset=offset)
+        ListDiscoveryResourcesRequest(limit=limit, offset=offset)
     )
 
     result_services = []
