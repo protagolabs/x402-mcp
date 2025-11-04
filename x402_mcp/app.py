@@ -14,6 +14,22 @@ from httpx._config import Timeout
 import logging
 import os
 
+from x402.types import PaymentRequirements
+
+_original_function = PaymentRequirements.validate_max_amount_required
+
+def _patched_function(cls, v):
+    try:
+        0 if len(v) == 0 else int(v)
+    except ValueError:
+        raise ValueError(
+            "max_amount_required must be an integer encoded as a string"
+        )
+    return v
+
+PaymentRequirements.validate_max_amount_required = _patched_function
+
+
 logger = logging.getLogger(__name__)
 
 # Create the MCP application
