@@ -2,32 +2,22 @@
 """
 MCP Server using fastmcp framework
 """
-from x402.types import PaymentRequirements
-
-_original_function = PaymentRequirements.validate_max_amount_required
-
-def _patched_function(cls, v):
-    try:
-        0 if len(v) == 0 else int(v)
-    except ValueError:
-        raise ValueError(
-            "max_amount_required must be an integer encoded as a string"
-        )
-    return v
-
-PaymentRequirements.validate_max_amount_required = _patched_function
-
 from fastmcp import FastMCP
 from x402.facilitator import FacilitatorClient
 from cdp.x402 import create_facilitator_config
-from x402.types import ListDiscoveryResourcesRequest, ListDiscoveryResourcesResponse
+from x402.types import ListDiscoveryResourcesRequest, DiscoveryResourcesPagination
+from x402.networks import SupportedNetworks
 from x402.clients.httpx import x402HttpxClient
 from x402.clients.base import decode_x_payment_response, x402Client
 from eth_account import Account
 from httpx._config import Timeout
+import httpx
+from typing import Optional, List, Any
+from datetime import datetime
+from pydantic import BaseModel, Field, field_validator, ConfigDict
+from pydantic.alias_generators import to_camel
 import logging
 import os
-
 
 logger = logging.getLogger(__name__)
 
@@ -35,6 +25,113 @@ logger = logging.getLogger(__name__)
 app = FastMCP()
 
 httpx_default_timeout = os.getenv("HTTPX_DEFAULT_TIMEOUT", "30")
+
+
+class _PaymentRequirements(BaseModel):
+    scheme: str
+    network: SupportedNetworks
+    max_amount_required: str
+    resource: str
+    description: str
+    mime_type: str
+    output_schema: Optional[Any] = None
+    pay_to: str
+    max_timeout_seconds: int
+    asset: str
+    extra: Optional[dict[str, Any]] = None
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True,
+    )
+
+    @field_validator("max_amount_required")
+    def validate_max_amount_required(cls, v):
+        try:
+            0 if len(v) == 0 else int(v)
+        except ValueError:
+            raise ValueError(
+                "max_amount_required must be an integer encoded as a string"
+            )
+        return v
+
+class _DiscoveredResource(BaseModel):
+    """A discovery resource represents a discoverable resource in the X402 ecosystem."""
+
+    resource: str
+    type: str = Field(..., pattern="^http$")  # Currently only supports 'http'
+    x402_version: int = Field(..., alias="x402Version")
+    accepts: List["_PaymentRequirements"]
+    last_updated: datetime = Field(
+        ...,
+        alias="lastUpdated",
+        description="ISO 8601 formatted datetime string with UTC timezone (e.g. 2025-08-09T01:07:04.005Z)",
+    )
+    metadata: Optional[dict] = None
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True,
+    )
+
+class _ListDiscoveryResourcesResponse(BaseModel):
+    """Response from the discovery resources endpoint."""
+
+    x402_version: int = Field(..., alias="x402Version")
+    items: List[_DiscoveredResource]
+    pagination: DiscoveryResourcesPagination
+
+    model_config = ConfigDict(
+        alias_generator=to_camel,
+        populate_by_name=True,
+        from_attributes=True,
+    )
+
+
+async def list(
+        config, request: Optional[ListDiscoveryResourcesRequest] = None
+    ) -> _ListDiscoveryResourcesResponse:
+        """List discovery resources from the facilitator service.
+
+        Args:
+            request: Optional parameters for filtering and pagination
+
+        Returns:
+            ListDiscoveryResourcesResponse containing the list of discovery resources and pagination info
+        """
+        if request is None:
+            request = ListDiscoveryResourcesRequest()
+
+        headers = {"Content-Type": "application/json"}
+
+        if config.get("create_headers"):
+            custom_headers = await config["create_headers"]()
+            headers.update(custom_headers.get("list", {}))
+
+        # Build query parameters, excluding None values
+        params = {
+            k: str(v)
+            for k, v in request.model_dump(by_alias=True).items()
+            if v is not None
+        }
+
+        async with httpx.AsyncClient() as client:
+            response = await client.get(
+                f"{config['url']}/discovery/resources",
+                params=params,
+                headers=headers,
+                follow_redirects=True,
+            )
+
+            if response.status_code != 200:
+                raise ValueError(
+                    f"Failed to list discovery resources: {response.status_code} {response.text}"
+                )
+
+            data = response.json()
+            return _ListDiscoveryResourcesResponse(**data)
 
 @app.tool(
     name="discovery_resource",
@@ -45,7 +142,7 @@ async def discovery_resource(
     offset: int = 0,
     asset: str = None,
     max_price: int = None,
-) -> ListDiscoveryResourcesResponse:
+) -> _ListDiscoveryResourcesResponse:
     """List discoverable x402 resources from the Bazaar.
 
     Args:
@@ -61,7 +158,7 @@ async def discovery_resource(
     facilitator = FacilitatorClient(facilitator_config)
 
     # Fetch all available services
-    services = await facilitator.list(
+    services = await list(facilitator.config,
         ListDiscoveryResourcesRequest(limit=limit, offset=offset)
     )
 
