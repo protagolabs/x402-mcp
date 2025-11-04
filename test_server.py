@@ -8,7 +8,7 @@ import json
 server = StdioServerParameters(
     command='python3',  # Replace with the actual path to your Python interpreter
     args=[
-        "app.py",  # Replace with the actual path to your server script
+        "x402_mcp/app.py",  # Replace with the actual path to your server script
     ],
 )
 
