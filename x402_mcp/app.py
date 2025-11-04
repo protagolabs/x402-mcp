@@ -167,7 +167,7 @@ def main():
     """Main function to run the MCP server"""
     logger.info("Starting MCP Server...")
     # Run with stdio transport (default)
-    app.run(transport="sse")
+    app.run(transport="stdio")
 
 if __name__ == "__main__":
     main()
