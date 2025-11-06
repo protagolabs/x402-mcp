@@ -25,6 +25,7 @@ logger = logging.getLogger(__name__)
 app = FastMCP()
 
 httpx_default_timeout = os.getenv("HTTPX_DEFAULT_TIMEOUT", "30")
+private_key = os.getenv("X402_PRIVATE_KEY", "")
 
 
 class _PaymentRequirements(BaseModel):
@@ -181,7 +182,6 @@ async def discovery_resource(
 
 @app.tool(name="call_service", description="Call x402 service")
 async def call_service(
-    private_key: str,
     resource: str,
     method: str,
     input_data: dict,
@@ -190,7 +190,6 @@ async def call_service(
     """Call x402 service
 
     Args:
-        private_key (str): User's private key to sign payments
         resource (str): The resource URL to call
         method (str): HTTP method ("get" or "post")
         input_data (dict): Input data for the request
