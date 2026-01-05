@@ -30,21 +30,25 @@ private_key = os.getenv("X402_PRIVATE_KEY", "")
 
 class _PaymentRequirements(BaseModel):
     scheme: str
-    network: SupportedNetworks
-    max_amount_required: str
-    resource: str
-    description: str
-    mime_type: str
-    output_schema: Optional[Any] = None
+    network: str
     pay_to: str
-    max_timeout_seconds: int
     asset: str
+    max_amount_required: str = '0'
+
+    # amount: Optional[str] = None
+    # resource: Optional[str] = None
+    # description: Optional[str] = ''
+    # mime_type: Optional[str] = None
+    # output_schema: Optional[Any] = None
+    # max_timeout_seconds: Optional[int] = None
+
     extra: Optional[dict[str, Any]] = None
 
     model_config = ConfigDict(
         alias_generator=to_camel,
         populate_by_name=True,
         from_attributes=True,
+        extra="allow",
     )
 
     @field_validator("max_amount_required")
@@ -282,3 +286,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+
